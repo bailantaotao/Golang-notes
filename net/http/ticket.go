@@ -20,9 +20,9 @@ type ticket struct {
 	TicketBaseURL string   `json:"ticketBaseURL"`
 	Activity      string   `json:"activity"`
 	Sku           string   `json:"sku"`
-	TicketURI     []string `json:"ticketURI"`
+	TicketURI     string   `json:"ticketURI"`
 	AreaURI       string   `json:"areaURI"`
-	Identity      string   `json:"identity"`
+	Identities    []string `json:"identity"`
 	SeatId        string   `json:"seatId"`
 	MagicalNumber string   `json:"magicalNumber"`
 }
@@ -47,12 +47,12 @@ func main() {
 	fmt.Println("load config:", ticket)
 
 	url := ticket.TicketBaseURL
-	if ticket.Identity == "" {
+	if len(ticket.Identities) == 0 {
 		log.Fatal("The identity field should be used")
 		return
 	}
 	if ticket.SeatId != "" && ticket.MagicalNumber != "" {
-		identity := delimiter + ticket.Identity
+		identity := delimiter + ticket.Identities[0]
 		seatId := delimiter + ticket.SeatId
 		magicalNum := delimiter + ticket.MagicalNumber
 		url += ticket.Activity + ticket.TicketURI + ticket.Sku + identity + seatId + magicalNum
@@ -66,38 +66,46 @@ func main() {
 	}
 	client := &http.Client{Transport: tr}
 
-	identity := delimiter + ticket.Identity
-	url += ticket.Activity + ticket.AreaURI + ticket.Sku + identity
-	res, err := client.Get(url)
-	if err != nil {
-		log.Fatal(err)
-	}
-	robots, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
-	bodyStr := string(robots)
-	// split front
-	sp1 := strings.Split(bodyStr, "var areaUrlList = ")
-	// split tail
-	sp2 := strings.Split(sp1[1], ";")
-	// replace '\' with ''
-	replace1 := strings.Replace(sp2[0], "\\", "", -1)
-
-	// fill to map
-	urls := make(map[string]string)
-	err = json.Unmarshal([]byte(replace1), &urls)
-
-	// open url
-	for key, url := range urls {
-		k := strings.Split(key, "_")
-		seatId, _ := strconv.Atoi(k[1])
-
-		if seatId >= 1 && seatId <= 5 {
-
+	for _, id := range ticket.Identities {
+		identity := delimiter + id
+		url += ticket.Activity + ticket.AreaURI + ticket.Sku + identity
+		res, err := client.Get(url)
+		if err != nil {
+			log.Fatal(err)
 		}
-		fmt.Println(ticket.TicketBaseURL + url)
-		open.Run(ticket.TicketBaseURL + url)
+		robots, err := ioutil.ReadAll(res.Body)
+		res.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+		bodyStr := string(robots)
+		// split front
+		sp1 := strings.Split(bodyStr, "var areaUrlList = ")
+		// split tail
+		sp2 := strings.Split(sp1[1], ";")
+		// replace '\' with ''
+		replace1 := strings.Replace(sp2[0], "\\", "", -1)
+
+		// fill to map
+		urls := make(map[string]string)
+		err = json.Unmarshal([]byte(replace1), &urls)
+
+		// open url
+		for key, url := range urls {
+			k := strings.Split(key, "_")
+			seatId, _ := strconv.Atoi(k[1])
+
+			// to avoid rock
+			if seatId <= 5 {
+				continue
+			}
+			// to avoid quite
+			if seatId > 5+9 && seatId != 33 && seatId != 35 && seatId != 37 {
+				continue
+			}
+
+			fmt.Println(ticket.TicketBaseURL + url)
+			open.Run(ticket.TicketBaseURL + url)
+		}
 	}
 }
