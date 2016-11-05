@@ -1,0 +1,10 @@
+{
+  "ticketBaseURL": "http://tixcraft.com",
+  "activity": "/ticket",
+  "sku": "/17_JRI_TPR",
+  "ticketURI": "/ticket",
+  "areaURI": "/area",
+  "identity": "2311",
+  "seatId": "",
+  "magicalNumber": ""
+}
